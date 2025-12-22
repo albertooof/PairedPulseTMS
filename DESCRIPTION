@@ -1,0 +1,17 @@
+Package: PairedPulseTMS
+Title: Normalising Paired-Pulse TMS Data
+Version: 0.0.0.9000
+Authors@R: 
+    person("Alberto", "Failla", , "alberto.failla@outlook.it", role = c("aut", "cre"))
+Description: This functions helps selecting the type of normalisation for paired-pulse data
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports:
+	dplyr,
+	ggplot2,
+	Rmisc,
+	tidyr,
+	stringr
+
