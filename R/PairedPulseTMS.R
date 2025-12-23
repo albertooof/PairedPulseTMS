@@ -36,6 +36,15 @@ NORMALISE_PP_to_SP <- function(data,
 
   current_ID <- data[1]
 
+
+  expected_cols <- number_of_triggers + 1  # +1 for ID column
+  if (ncol(data) != expected_cols) {
+    stop(paste0("Data has ", ncol(data), " columns but expected ", expected_cols,
+                " (ID + ", number_of_triggers, " triggers)"))
+  }
+
+
+
   TS_alone_list <- list()
   CS_TS_list <- list()
 
@@ -55,11 +64,17 @@ NORMALISE_PP_to_SP <- function(data,
   TS_alone <- as.data.frame ( unlist(TS_alone_list) )
   colnames(TS_alone)[1] <- "value"
   TS_alone$value <- as.numeric(TS_alone$value)
+
+
   CS_TS <- as.data.frame (unlist(CS_TS_list) )
   colnames(CS_TS)[1] <- "value"
   CS_TS$value <- as.numeric(CS_TS$value)
 
 
+  # Check for valid data
+  if (any(is.na(TS_alone$value)) || any(is.na(CS_TS$value))) {
+    warning("NA values detected in data")
+  }
 
 
   if (normalise == "byTimePoint" | normalise == 1 | normalise == "A"){
@@ -69,35 +84,19 @@ NORMALISE_PP_to_SP <- function(data,
 
     combined <- rbind(df_TS, df_CS_TS)
 
-    # Create interleaved indices
-    n <- nrow(df_TS)
-    indices <- c(rbind(1:n, (n+1):(2*n)))
-
-    # Reorder
-    result <- as.data.frame(combined[indices, ])
-
-    # Reset row names if needed
-    rownames(result) <- NULL
-
 
   }
 
   else if (normalise == "byTimePoint_with_subtraction" | normalise == "B" | normalise == 2){
 
-    df_TS <- (TS_alone - TS_alone) / TS_alone
+    df_TS <- as.data.frame(rep(0, nrow(TS_alone)))
+    colnames(df_TS) <- "value"
+
+
+    #df_TS <- (TS_alone - TS_alone) / TS_alone
     df_CS_TS <- (CS_TS - TS_alone) / TS_alone
 
     combined <- rbind(df_TS, df_CS_TS)
-
-    # Create interleaved indices
-    n <- nrow(df_TS)
-    indices <- c(rbind(1:n, (n+1):(2*n)))
-
-    # Reorder
-    result <- as.data.frame(combined[indices, ])
-
-    # Reset row names if needed
-    rownames(result) <- NULL
 
 
   }
@@ -109,18 +108,7 @@ NORMALISE_PP_to_SP <- function(data,
 
     combined <- rbind(df_TS, df_CS_TS)
 
-    # Create interleaved indices
-    n <- nrow(df_TS)
-    indices <- c(rbind(1:n, (n+1):(2*n)))
-
-    # Reorder
-    result <- as.data.frame(combined[indices, ])
-
-    # Reset row names if needed
-    rownames(result) <- NULL
-
-
-  }
+     }
 
 
   else if (normalise == "byTimePoint_with_NatLog" | normalise == "D" | normalise == 4){
@@ -130,16 +118,6 @@ NORMALISE_PP_to_SP <- function(data,
 
     combined <- rbind(df_TS, df_CS_TS)
 
-    # Create interleaved indices
-    n <- nrow(df_TS)
-    indices <- c(rbind(1:n, (n+1):(2*n)))
-
-    # Reorder
-    result <- as.data.frame(combined[indices, ])
-
-    # Reset row names if needed
-    rownames(result) <- NULL
-
 
   }
 
@@ -147,33 +125,30 @@ NORMALISE_PP_to_SP <- function(data,
 
   else if (normalise == "to_SP_t0" | normalise == "E" | normalise == 5){
 
-    df_TS <- TS_alone / TS_alone[1,1]
-    df_CS_TS <- CS_TS / TS_alone[1,1]
-
-    combined <- rbind(df_TS, df_CS_TS)
-
-    # Create interleaved indices
-    n <- nrow(df_TS)
-    indices <- c(rbind(1:n, (n+1):(2*n)))
-
-    # Reorder
-    result <- as.data.frame(combined[indices, ])
-
-    # Reset row names if needed
-    rownames(result) <- NULL
+    baseline <- TS_alone[1, 1]
+    df_TS <- TS_alone / baseline
+    df_CS_TS <- CS_TS / baseline
 
 
-  }
+    } else {
+      stop(paste0("Unknown normalization method: ", normalise))
+    }
 
 
+  # Combine and interleave
+  combined <- rbind(df_TS, df_CS_TS)
+  n <- nrow(df_TS)
+  indices <- c(rbind(1:n, (n + 1):(2 * n)))
+  result <- as.data.frame(combined[indices, ])
+  rownames(result) <- NULL
+
+  # Transpose and add ID
   result <- as.data.frame(t(result))
-
   result <- cbind(current_ID, result)
 
+  # Create column names (FIXED: consistent naming)
   n_cols <- ncol(result)
-
   n_pairs <- (n_cols - 1) / 2
-
   new_names <- c("ID")
 
   for (i in 1:n_pairs) {
@@ -181,7 +156,6 @@ NORMALISE_PP_to_SP <- function(data,
   }
 
   colnames(result) <- new_names
-
 
   return(result)
 
